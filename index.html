@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEREIDA — Saline Water Intrusion Forecast Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+          background:#F5F4F0;color:#2C2C2A;font-size:13px}
+header{background:#065A82;color:#fff;padding:0.7rem 1.25rem;
+       display:flex;align-items:center;gap:1rem;flex-wrap:wrap;flex-shrink:0}
+header h1{font-size:15px;font-weight:600;letter-spacing:0.01em}
+header p{font-size:12px;opacity:0.7}
+.controls{background:#fff;border-bottom:1px solid #D9D8D4;
+          padding:0.5rem 1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;flex-shrink:0}
+.controls label{font-size:11px;font-weight:500;color:#888780;
+                text-transform:uppercase;letter-spacing:0.05em;margin-right:0.25rem}
+.controls select{font-size:13px;font-weight:500;background:#F5F4F0;color:#2C2C2A;
+                 border:0.5px solid #D9D8D4;border-radius:5px;padding:5px 8px;
+                 outline:none;cursor:pointer}
+.controls select:focus{border-color:#065A82}
+.legend{background:#fff;border-bottom:1px solid #D9D8D4;padding:0.4rem 1rem;
+        font-size:11px;color:#2C2C2A;display:flex;flex-wrap:wrap;gap:1.1rem;align-items:center;flex-shrink:0}
+.legend-title{font-weight:600;font-size:11px;color:#888780;text-transform:uppercase;
+              letter-spacing:0.05em;white-space:nowrap}
+.legend-item{display:flex;align-items:center;gap:0.35rem;white-space:nowrap}
+.ml-dot{width:12px;height:12px;border-radius:50%;border:2px solid rgba(0,0,0,0.3);flex-shrink:0}
+.risk-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+.layout{display:flex;height:calc(100vh - 40px - 42px - 36px);overflow:hidden}
+
+#map-panel{width:42%;flex-shrink:0;border-right:1px solid #D9D8D4;position:relative}
+#map{height:100%;width:100%}
+
+#plot-panel{flex:1;overflow-y:auto;background:#F5F4F0}
+.plot-header{padding:0.6rem 1rem;background:#fff;border-bottom:0.5px solid #D9D8D4;
+             display:flex;align-items:center;gap:0.75rem;position:sticky;top:0;z-index:10}
+.plot-header h2{font-size:13px;font-weight:600;color:#2C2C2A}
+.plot-header .basin-tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;
+                         text-transform:uppercase;letter-spacing:0.05em}
+.basin-ter{background:#E3F0FA;color:#065A82}
+.basin-tordera{background:#E8F5E9;color:#2E7D32}
+
+.plot-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+            height:100%;color:#888780;gap:0.75rem;padding:2rem;text-align:center}
+.plot-empty svg{opacity:0.25}
+.plot-empty p{font-size:13px}
+
+.plot-grid{display:grid;grid-template-columns:1fr;gap:0.6rem;padding:0.75rem}
+.img-card{background:#fff;border-radius:8px;border:0.5px solid #D9D8D4;overflow:hidden}
+.card-title{font-size:11px;font-weight:600;color:#2C2C2A;
+            padding:0.35rem 0.75rem;border-bottom:0.5px solid #F0EFE9;background:#F8F7F3}
+.img-wrap{position:relative;background:#f0f0ed}
+.img-wrap img{width:100%;height:auto;display:block}
+.img-wrap .placeholder{padding:1.5rem;text-align:center;color:#888780;
+                        font-size:12px;font-style:italic}
+.well-meta{font-size:11px;color:#888780;padding:0.3rem 0.75rem 0.6rem}
+
+#statusBar{font-size:11px;color:#888780;margin-left:auto}
+
+.leaflet-popup-content b{color:#065A82}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>NEREIDA — Previsió Estacional d'Intrusió Salina</h1>
+  <p>Seleccioneu un pou al mapa per veure la previsió</p>
+</header>
+
+<div class="controls">
+  <div>
+    <label for="selYear">Any</label>
+    <select id="selYear"></select>
+  </div>
+  <div>
+    <label for="selMonth">Mes</label>
+    <select id="selMonth">
+      <option value="01">Gener</option><option value="02">Febrer</option>
+      <option value="03">Març</option><option value="04">Abril</option>
+      <option value="05">Maig</option><option value="06">Juny</option>
+      <option value="07">Juliol</option><option value="08">Agost</option>
+      <option value="09">Setembre</option><option value="10">Octubre</option>
+      <option value="11">Novembre</option><option value="12">Desembre</option>
+    </select>
+  </div>
+  <button onclick="goToLatest()" style="font-size:12px;padding:5px 12px;border-radius:5px;border:0.5px solid #065A82;background:#065A82;color:#fff;cursor:pointer;white-space:nowrap">Darrera previsió</button>
+  <span id="statusBar"></span>
+</div>
+
+<div class="legend">
+  <span class="legend-title">Llegenda</span>
+  <span class="legend-item"><span class="risk-dot" style="background:#2E7D32"></span>Risc baix (P&lt;33%)</span>
+  <span class="legend-item"><span class="risk-dot" style="background:#D9A404"></span>Risc mitjà (33–66%)</span>
+  <span class="legend-item"><span class="risk-dot" style="background:#B3261E"></span>Risc alt (P&gt;66%)</span>
+  <span class="legend-item" style="border-left:1px solid #D9D8D4;padding-left:1rem">
+    <span class="ml-dot" style="background:#065A82"></span>Conca Ter
+  </span>
+  <span class="legend-item"><span class="ml-dot" style="background:#2E7D32"></span>Conca Tordera</span>
+</div>
+
+<div class="layout">
+  <div id="map-panel">
+    <div id="map"></div>
+  </div>
+  <div id="plot-panel">
+    <div class="plot-empty" id="emptyMsg">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.5">
+        <circle cx="12" cy="10" r="4"/><path d="M12 2C8 2 4 5.5 4 10c0 5.5 8 12 8 12s8-6.5 8-12c0-4.5-4-8-8-8z"/>
+      </svg>
+      <p>Seleccioneu un pou al mapa per veure la previsió d'intrusió salina</p>
+    </div>
+    <div id="plotContent" style="display:none">
+      <div class="plot-header" id="plotHeader">
+        <h2 id="wellName"></h2>
+        <span class="basin-tag" id="basinTag"></span>
+      </div>
+      <div class="well-meta" id="wellMeta"></div>
+      <div class="plot-grid" id="plotGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Year/month selectors ─────────────────────────────────────────────────────
+const selYear  = document.getElementById("selYear");
+const selMonth = document.getElementById("selMonth");
+for (let y = new Date().getFullYear(); y >= 2007; y--) {
+  const o = document.createElement("option");
+  o.value = y; o.textContent = y;
+  selYear.appendChild(o);
+}
+function getLatestForecast() {
+  const now = new Date();
+  let y = now.getFullYear();
+  let m = now.getMonth() + 1;
+  if (now.getDate() < 15) { m--; if (m === 0) { m = 12; y--; } }
+  return { year: String(y), month: String(m).padStart(2, "0") };
+}
+const latest = getLatestForecast();
+selYear.value  = latest.year;
+selMonth.value = latest.month;
+
+function goToLatest() {
+  const l = getLatestForecast();
+  selYear.value  = l.year;
+  selMonth.value = l.month;
+  if (currentWell) loadImages();
+}
+
+const BASIN_COLOR = { ter: "#065A82", tordera: "#2E7D32" };
+const BASIN_LABEL = { ter: "Ter", tordera: "Tordera" };
+const BASIN_CLASS = { ter: "basin-ter", tordera: "basin-tordera" };
+
+// ── Leaflet map ───────────────────────────────────────────────────────────────
+const map = L.map("map").setView([41.85, 2.95], 10);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "&copy; OpenStreetMap contributors",
+  maxZoom: 18
+}).addTo(map);
+
+let activeMarker = null;
+let currentWell = null;
+
+function selectWell(well) {
+  currentWell = well;
+  document.getElementById("emptyMsg").style.display    = "none";
+  document.getElementById("plotContent").style.display = "block";
+  document.getElementById("wellName").textContent   = well.code;
+  const tag = document.getElementById("basinTag");
+  tag.textContent = BASIN_LABEL[well.basin];
+  tag.className   = "basin-tag " + BASIN_CLASS[well.basin];
+  document.getElementById("wellMeta").textContent =
+    "Profunditat: " + well.depth + " m · Distància a costa: " + Math.round(well.distance_coast_m) + " m";
+  loadImages();
+}
+
+function loadImages() {
+  if (!currentWell) return;
+  const yr  = selYear.value;
+  const mo  = selMonth.value;
+  const key = yr + "-" + mo;
+  const base = "density_plots/" + key + "/";
+
+  document.getElementById("statusBar").textContent = "Previsió: " + key;
+
+  const grid = document.getElementById("plotGrid");
+  grid.innerHTML = "";
+
+  const file = "swi_" + currentWell.basin + "_" + currentWell.code + ".png";
+  const card = document.createElement("div");
+  card.className = "img-card";
+  card.innerHTML = `<div class="card-title">Probabilitat d'intrusió salina</div>
+                    <div class="img-wrap" id="wrap_swi"></div>`;
+  grid.appendChild(card);
+
+  const wrap = card.querySelector(".img-wrap");
+  const img  = document.createElement("img");
+  img.alt    = file;
+  img.onerror = function() {
+    this.style.display = "none";
+    let ph = wrap.querySelector(".placeholder");
+    if (!ph) { ph = document.createElement("div"); ph.className = "placeholder"; wrap.appendChild(ph); }
+    ph.textContent = "No disponible per " + key;
+  };
+  img.onload = function() {
+    this.style.display = "block";
+    const ph = wrap.querySelector(".placeholder");
+    if (ph) ph.remove();
+  };
+  wrap.appendChild(img);
+  img.src = base + file + "?t=" + Date.now();
+}
+
+// ── Load wells and populate map ───────────────────────────────────────────────
+fetch("swi_wells.json?t=" + Date.now())
+  .then(r => r.json())
+  .then(wells => {
+    wells.forEach(w => {
+      const marker = L.circleMarker([w.lat, w.lon], {
+        radius: 7,
+        fillColor: BASIN_COLOR[w.basin],
+        color: "#fff",
+        weight: 1.5,
+        opacity: 1,
+        fillOpacity: 0.9
+      }).addTo(map);
+
+      marker.bindTooltip(w.code + " (" + BASIN_LABEL[w.basin] + ")", { direction: "top", offset: [0, -6] });
+
+      marker.on("click", () => {
+        if (activeMarker && activeMarker !== marker) {
+          activeMarker.setStyle({ weight: 1.5, radius: 7 });
+        }
+        marker.setStyle({ weight: 2.5, radius: 9 });
+        activeMarker = marker;
+        selectWell(w);
+      });
+    });
+  })
+  .catch(err => {
+    document.getElementById("statusBar").textContent = "Error carregant pous: " + err;
+  });
+
+selYear.addEventListener("change",  loadImages);
+selMonth.addEventListener("change", loadImages);
+</script>
+</body>
+</html>

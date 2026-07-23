@@ -100,6 +100,11 @@ header p{font-size:12px;opacity:0.7}
     <span class="ml-dot" style="background:#065A82"></span>Conca Ter
   </span>
   <span class="legend-item"><span class="ml-dot" style="background:#2E7D32"></span>Conca Tordera</span>
+  <span class="legend-item" style="border-left:1px solid #D9D8D4;padding-left:1rem">
+    <span style="color:#2E7D32;font-weight:700;font-size:15px;line-height:1">*</span>&nbsp;Bon skill (BSS≥0.1)
+  </span>
+  <span class="legend-item"><span style="color:#F9A825;font-weight:700;font-size:15px;line-height:1">*</span>&nbsp;Skill baix</span>
+  <span class="legend-item"><span style="color:#C62828;font-weight:700;font-size:15px;line-height:1">*</span>&nbsp;Sense skill</span>
 </div>
 
 <div class="layout">
@@ -233,12 +238,13 @@ fetch("swi_wells.json?t=" + Date.now())
 
       marker.on("click", () => {
         if (activeMarker && activeMarker !== marker) {
-          activeMarker.setStyle({ weight: 1.5, radius: 7 });
+          activeMarker.setStyle({ weight: 1.5, radius: 7, fillColor: BASIN_COLOR[activeMarker._well.basin] });
         }
-        marker.setStyle({ weight: 2.5, radius: 9 });
+        marker.setStyle({ weight: 2.5, radius: 9, fillColor: "#C77DFF" });
         activeMarker = marker;
         selectWell(w);
       });
+      marker._well = w;
     });
   })
   .catch(err => {

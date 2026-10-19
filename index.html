@@ -166,9 +166,9 @@ const BASIN_CLASS = { ter: "basin-ter", tordera: "basin-tordera" };
 
 // ── Leaflet map ───────────────────────────────────────────────────────────────
 const map = L.map("map").setView([41.85, 2.95], 10);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  attribution: "&copy; OpenStreetMap contributors",
-  maxZoom: 18
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+  attribution: "Tiles &copy; Esri",
+  maxZoom: 19
 }).addTo(map);
 
 let activeMarker = null;
